@@ -1,0 +1,21 @@
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# some more ls aliases
+alias l='ls -CF'
+alias ll='ls -alF'
+alias la='ls -A'
+
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
+
+alias bi='bundle install'
+alias lenv='export $(cat .env)'
+
+alias gp='git pull'
+alias gc='git commit'
+alias gs='git status'
+alias gsp='git stage -p'

@@ -1,0 +1,20 @@
+[user]
+	email = lakshan@laktek.com
+	name = Lakshan Perera
+[core]
+	editor = vim
+[pull]
+	rebase = true
+[diff]
+  algorithm = patience
+[color]
+  ui = auto
+[push]
+	default = current
+[alias]
+  st = status
+  di = diff
+  ci = commit
+  br = branch
+  llog = log --date=local
+  pr = "!f() { git fetch origin refs/pull/$1/head:pr/$1; } ; f"
