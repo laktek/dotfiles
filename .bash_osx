@@ -1,1 +1,7 @@
 alias ls='gls --color=auto'
+
+# Need to install bash_completion using Homebrew.
+# And then add brew prefix to get bash completion working.
+if [ -f $(brew --prefix)/etc/bash_completion ]; then
+  . $(brew --prefix)/etc/bash_completion
+fi
