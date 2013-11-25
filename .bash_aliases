@@ -3,6 +3,10 @@ alias grep='grep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
 
+# Need to set this to get solarized color-scheme
+# to work in tmux.
+alias tmux='TERM=screen-256color-bce tmux'
+
 # some more ls aliases
 alias l='ls -CF'
 alias ll='ls -alF'
