@@ -7,23 +7,6 @@ set backspace=indent,eol,start
 
 set nobackup
 set nowritebackup
-"set autoindent
-"set smartindent
-"set smarttab     " smarter tab levels
-"set nowrap       " don't wrap lines
-"set textwidth=0
-"set shiftwidth=2 " autoindent is two spaces
-"set softtabstop=2
-"set tabstop=2    " a tab is two spaces
-"set expandtab    " use spaces, not tabs
-"set backspace=indent,eol,start " backspace through everything
-"
-"set list
-"set listchars=""          " reset listchars
-"set listchars=tab:‣\      " display tabs with a sign
-"set listchars+=trail:·    " display trailing whitespaces with a dot
-"set listchars+=extends:»  " right wrap
-"set listchars+=precedes:« " left wrap9nowritebackup
 set history=100		" keep 100 lines of command line history
 set ruler		" show the cursor position all the time
 set showcmd		" display incomplete commands
