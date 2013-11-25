@@ -14,6 +14,7 @@ alias rm='rm -i'
 
 alias bi='bundle install'
 alias lenv='export $(cat .env)'
+alias hk='heroku'
 
 alias gp='git pull'
 alias gc='git commit'
