@@ -162,8 +162,8 @@ let g:agprg = 'ag --nogroup --nocolor --column'
 " Color scheme
 syntax enable
 set background=dark
-colorscheme solarized
-" colorscheme vividchalk
+ colorscheme solarized
+"colorscheme vividchalk
 " highlight NonText guibg=#060606
 " highlight Folded  guibg=#0A0A0A guifg=#9090D0
 
