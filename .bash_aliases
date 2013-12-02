@@ -21,6 +21,7 @@ alias lenv='export $(cat .env)'
 alias hk='heroku'
 alias nr='repl.history'
 alias ss='export $(cat .env) && script/server'
+alias mailcatcher='mailcatcher --http-ip 0.0.0.0 -f'
 
 alias gp='git pull'
 alias gc='git commit'
