@@ -17,6 +17,7 @@ alias mv='mv -i'
 alias rm='rm -i'
 
 alias bi='bundle install'
+alias be='bundle exec'
 alias lenv='export $(cat .env)'
 alias hk='heroku'
 alias nr='repl.history'
