@@ -40,7 +40,7 @@ export PATH=".bundle/binstubs:$HOME/.rbenv/shims:$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
 
 # Source NVM to manage Node versions
-[ -s \$HOME/.nvm/nvm.sh ] && . \$HOME/.nvm/nvm.sh
+[ -s $HOME/.nvm/nvm.sh ] && . $HOME/.nvm/nvm.sh
 
 # Alias definitions.
 if [ -f ~/.bash_aliases ]; then
