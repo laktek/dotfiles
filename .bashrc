@@ -42,7 +42,12 @@ eval "$(rbenv init -)"
 # Source NVM to manage Node versions
 [ -s $HOME/.nvm/nvm.sh ] && . $HOME/.nvm/nvm.sh
 
-# Alias definitions.
+# Include Go tools
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/workspace/gocode
+export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+
+ #Alias definitions.
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
