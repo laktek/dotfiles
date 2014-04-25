@@ -60,8 +60,6 @@ if has("autocmd")
 
 	autocmd BufWritePre *.js :%s/\s\+$//e
 
-	autocmd BufWritePost *.go :silent Fmt
-
 else
   set autoindent		" always set autoindenting on
 endif
@@ -255,3 +253,12 @@ if has('autocmd')
 endif
 
 autocmd Filetype gitcommit setlocal spell textwidth=72
+
+" Load Go plugins
+" Clear filetype flags before changing runtimepath to force Vim to reload them.
+filetype off
+filetype plugin indent off
+set runtimepath+=$GOROOT/misc/vim
+filetype plugin indent on
+syntax on
+autocmd FileType go autocmd BufWritePre <buffer> Fmt
