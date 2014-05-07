@@ -263,3 +263,6 @@ filetype plugin indent on
 syntax on
 au FileType go set noexpandtab
 autocmd FileType go autocmd BufWritePre <buffer> Fmt
+
+au BufNewFile,BufRead *.hamlc,*.hbs.haml,*.js.hamlbars set filetype=haml
+au BufNewFile,BufRead *.emblem set filetype=emblem
