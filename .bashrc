@@ -45,6 +45,7 @@ eval "$(rbenv init -)"
 # Include Go tools
 export GOROOT=/usr/local/go
 export GOPATH=$HOME/workspace/gocode
+export GOBIN=$GOPATH/bin
 export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 
  #Alias definitions.
@@ -66,3 +67,6 @@ if [[ "$unamestr" == 'Linux' ]]; then
 elif [[ "$unamestr" == 'Darwin' ]]; then
   . ~/.bash_osx
 fi
+
+# Use Autoenv
+echo 'source ~/.autoenv/activate.sh' >> ~/.bashrc
