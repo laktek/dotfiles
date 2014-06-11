@@ -254,15 +254,5 @@ endif
 
 autocmd Filetype gitcommit setlocal spell textwidth=72
 
-" Load Go plugins
-" Clear filetype flags before changing runtimepath to force Vim to reload them.
-filetype off
-filetype plugin indent off
-set runtimepath+=$GOROOT/misc/vim
-filetype plugin indent on
-syntax on
-au FileType go set noexpandtab
-autocmd FileType go autocmd BufWritePre <buffer> Fmt
-
 au BufNewFile,BufRead *.hamlc,*.hbs.haml,*.js.hamlbars set filetype=haml
 au BufNewFile,BufRead *.emblem set filetype=emblem
