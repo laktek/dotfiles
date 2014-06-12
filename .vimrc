@@ -256,3 +256,7 @@ autocmd Filetype gitcommit setlocal spell textwidth=72
 
 au BufNewFile,BufRead *.hamlc,*.hbs.haml,*.js.hamlbars set filetype=haml
 au BufNewFile,BufRead *.emblem set filetype=emblem
+
+" disable listchars for Go
+" tab chars adds noise
+autocmd FileType go set nolist
