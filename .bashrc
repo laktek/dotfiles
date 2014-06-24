@@ -67,6 +67,3 @@ if [[ "$unamestr" == 'Linux' ]]; then
 elif [[ "$unamestr" == 'Darwin' ]]; then
   . ~/.bash_osx
 fi
-
-# Use Autoenv
-echo 'source ~/.autoenv/activate.sh' >> ~/.bashrc
