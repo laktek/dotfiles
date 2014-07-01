@@ -18,7 +18,7 @@ alias rm='rm -i'
 
 alias bi='bundle install'
 alias be='bundle exec'
-alias lenv='export $(cat .env)'
+alias lenv='source .env'
 alias hk='heroku'
 alias nr='repl.history'
 alias ss='export $(cat .env) && script/server'
