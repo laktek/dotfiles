@@ -31,3 +31,5 @@ alias gc='git commit'
 alias gs='git status'
 alias gsp='git stage -p'
 alias gch='git checkout'
+
+alias ge='goop exec'
