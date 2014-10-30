@@ -43,8 +43,8 @@ eval "$(rbenv init -)"
 [ -s $HOME/.nvm/nvm.sh ] && . $HOME/.nvm/nvm.sh
 
 # Include Go tools
-export GOROOT=/usr/local/go
-export GOPATH=$HOME/workspace/gocode
+export GOROOT=/usr/local/opt/go
+export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 
