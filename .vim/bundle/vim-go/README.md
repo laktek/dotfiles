@@ -235,10 +235,9 @@ let g:go_get_update = 0
 ### Using with Neovim (beta)
 
 Note: Neovim currently is not a first class citizen for vim-go. You are free
-to open bug, however I'm not using Neovim so it's hard for me to test it. 
-vim-go might not work well as good as in Vim. I'm happy to accept pull requests 
-or very detailed bug reports. If you're interested to improve the state of 
-Neovim in vim-go you're always welcome!
+to open bugs but I'm not going to look at them. Even though I'm using Neovim
+myself, Neovim itself is still alpha. So vim-go might not work well as good as
+in Vim. I'm happy to accept pull requests or very detailed bug reports.
 
 
 Run `:GoRun` in a new tab, horizontal split or vertical split terminal
