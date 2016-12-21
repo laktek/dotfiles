@@ -260,3 +260,6 @@ au BufNewFile,BufRead *.emblem set filetype=emblem
 " disable listchars for Go
 " tab chars adds noise
 autocmd FileType go set nolist
+
+" enable goimports
+let g:go_fmt_command = "goimports"
