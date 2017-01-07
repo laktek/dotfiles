@@ -263,3 +263,6 @@ autocmd FileType go set nolist
 
 " enable goimports
 let g:go_fmt_command = "goimports"
+
+" run stylefmt on write
+au BufWritePre *.css :Stylefmt
