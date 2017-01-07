@@ -59,7 +59,6 @@ if has("autocmd")
   augroup END
 
 	autocmd BufWritePre *.js :%s/\s\+$//e
-
 else
   set autoindent		" always set autoindenting on
 endif
@@ -137,33 +136,15 @@ map <leader>cd :cd %:p:h<CR>
 "set listchars=tab:>-,trail:·,eol:$
 "nmap <silent> <leader>s :set nolist!<CR>
 
-" Edit routes
-command! Rroutes :e config/routes.rb
-command! RTroutes :tabe config/routes.rb
-
-" Run Cucumber Tests
-command! Rcumber :!cucumber %
-
-" open snippets files
-map ,sv :tabe "~/projects/snippets/vim.txt"
-map ,sg :tabe "~/projects/snippets/git.txt"
-map ,sr :tabe "~/projects/snippets/ruby.txt"
-
 " Local config
 if filereadable(".vimrc.local")
   source .vimrc.local
 endif
 
-" Use Ag for code search
-let g:agprg = 'ag --nogroup --nocolor --column'
-
 " Color scheme
 syntax enable
 set background=dark
- colorscheme solarized
-"colorscheme vividchalk
-" highlight NonText guibg=#060606
-" highlight Folded  guibg=#0A0A0A guifg=#9090D0
+colorscheme solarized
 
 " set font
 set gfn=Inconsolata:h13
@@ -179,52 +160,12 @@ let g:snippetsEmu_key = "<S-Tab>"
 " (only complete to the longest unambiguous match, and show a menu)
 set completeopt=longest,menu
 set wildmode=list:longest,list:full
- 
-" Smart Paste
-function! SmartPasteSelection(insertMode)
-  let s:old_col = col(".")
-  let s:old_lnum = line(".")
-  " Correct the cursor position
-  exec 'normal "+gP'
-  if a:insertMode
-    exec 'normal x'
-  endif
-  let s:after_col = col(".")
-  let s:after_col_end=col("$")
-  let s:after_col_offset=s:after_col_end-s:after_col
-  let s:after_lnum = line(".")
-  let s:cmd_str='normal V'
-  if s:old_lnum < s:after_lnum
-    let s:cmd_str=s:cmd_str . (s:after_lnum - s:old_lnum) . "k"
-  elseif s:old_lnum> s:after_lnum
-    let s:cmd_str=s:cmd_str . (s:old_lnum - s:after_lnum) . "j"
-  endif
-  let s:cmd_str=s:cmd_str . "="
-  exec s:cmd_str
-  let s:new_col_end=col("$")
-  call cursor(s:after_lnum, s:new_col_end-s:after_col_offset)
-  if a:insertMode
-    if s:after_col_offset <=1
-      exec 'startinsert!'
-    else
-      exec 'startinsert'
-    endif
-  endif
-endfunction
-
-" Use CTRL-V for pasting, also in Insert mode
-nmap <C-V> :call SmartPasteSelection(0)<CR>
-imap <C-V> #<Esc>:call SmartPasteSelection(1)<CR>
 
 " Toggle spell-checking
 :map <F5> :setlocal spell! spelllang=en_us<CR>
 
-" clojure editor
-let vimclojure#NailgunClient = "/home/lakshan/projects/hobby/clojure/vimclojure-2.1.1/ng"
-let clj_want_gorilla = 1
-
 " code folding for JS
-function! JavaScriptFold() 
+function! JavaScriptFold()
     setl foldmethod=syntax
     setl foldlevelstart=1
     syn region foldBraces start=/{/ end=/}/ transparent fold keepend extend
@@ -236,12 +177,6 @@ function! JavaScriptFold()
 endfunction
 au FileType javascript call JavaScriptFold()
 au FileType javascript setl fen
-
-" code folding for CoffeeScript
-au BufNewFile,BufReadPost *.coffee setl foldmethod=indent nofoldenable
-
-" code for auto-formatting Go files
-set rtp+=$GOROOT/misc/vim
 
 " syntax highlighting for less
 au BufNewFile,BufRead *.less set filetype=less
@@ -266,3 +201,8 @@ let g:go_fmt_command = "goimports"
 
 " run stylefmt on write
 au BufWritePre *.css :Stylefmt
+
+" press F2 to toggle paste
+nnoremap <F2> :set invpaste paste?<CR>
+set pastetoggle=<F2>
+set showmode
