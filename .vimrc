@@ -206,3 +206,8 @@ au BufWritePre *.css :Stylefmt
 nnoremap <F2> :set invpaste paste?<CR>
 set pastetoggle=<F2>
 set showmode
+
+" Tsuquyomi TypeScript plugin
+let g:tsuquyomi_disable_default_mappings = 1
+map <buffer> <C-i> <Plug>(TsuquyomiReferences)
+map <buffer> <C-]> <Plug>(TsuquyomiDefinition)
