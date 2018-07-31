@@ -69,3 +69,6 @@ if [[ "$unamestr" == 'Linux' ]]; then
 elif [[ "$unamestr" == 'Darwin' ]]; then
   . ~/.bash_osx
 fi
+
+# Add Flutter to PATH
+export PATH=$PATH:/$HOME/src/flutter/bin
