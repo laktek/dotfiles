@@ -133,8 +133,8 @@ map <leader>d :execute 'NERDTreeToggle ' . getcwd()<CR>
 map <leader>cd :cd %:p:h<CR>
 
 " Display extra whitespace
-"set listchars=tab:>-,trail:·,eol:$
-"nmap <silent> <leader>s :set nolist!<CR>
+set listchars=tab:>-,trail:·,
+nmap <silent> <leader>s :set nolist!<CR>
 
 " Local config
 if filereadable(".vimrc.local")
@@ -190,7 +190,6 @@ endif
 autocmd Filetype gitcommit setlocal spell textwidth=72
 
 au BufNewFile,BufRead *.hamlc,*.hbs.haml,*.js.hamlbars set filetype=haml
-au BufNewFile,BufRead *.emblem set filetype=emblem
 
 " disable listchars for Go
 " tab chars adds noise
@@ -211,3 +210,15 @@ set showmode
 let g:tsuquyomi_disable_default_mappings = 1
 map <buffer> <C-i> <Plug>(TsuquyomiReferences)
 map <buffer> <C-]> <Plug>(TsuquyomiDefinition)
+
+" Configure Ale fixers
+let g:ale_fixers = {
+\   '*': ['remove_trailing_lines', 'trim_whitespace'],
+\   'javascript': ['prettier', 'eslint'],
+\}
+
+" Automatically fix files on save
+let g:ale_fix_on_save = 1
+
+" Enable Ale completion where available.
+let g:ale_completion_enabled = 1
