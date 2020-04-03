@@ -215,7 +215,11 @@ map <buffer> <C-]> <Plug>(TsuquyomiDefinition)
 let g:ale_fixers = {
 \   '*': ['remove_trailing_lines', 'trim_whitespace'],
 \   'javascript': ['prettier', 'eslint'],
+\   'typescript': ['tslint', 'prettier'],
 \}
+
+" Only run ale for explicitly enabled languages
+let g:ale_linters_explicit = 1
 
 " Automatically fix files on save
 let g:ale_fix_on_save = 1
