@@ -33,10 +33,6 @@ function parse_git_branch {
 
 export PS1="\[\033[38;5;33m\]\h\[\033[38;5;64m\]:\[\033[38;5;37m\]\W\[\033[38;5;136m\]\$(parse_git_branch)\[\033[38;5;160m\]\$\[\033[00m\] "
 
-# Source rbenv to manage Ruby versions
-export PATH=".bundle/binstubs:$HOME/.rbenv/shims:$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init -)"
-
 # Source NVM to manage Node versions
 [ -s $HOME/.nvm/nvm.sh ] && . $HOME/.nvm/nvm.sh
 
