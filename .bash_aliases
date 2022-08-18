@@ -1,4 +1,4 @@
-alias ls='ls --color=auto'
+alias ls='ls -G'
 alias grep='grep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
@@ -16,14 +16,8 @@ alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
 
-alias bi='bundle install'
-alias be='bundle exec'
-alias lenv='source .env'
-alias nr='repl.history'
 alias ss='export $(cat .env) && script/server'
-alias mailcatcher='mailcatcher --http-ip 0.0.0.0 -f'
 alias server='python -m SimpleHTTPServer'
-alias nx='~/openresty/nginx/sbin/nginx'
 
 alias gp='git pull'
 alias gc='git commit'
@@ -31,4 +25,5 @@ alias gs='git status'
 alias gsp='git stage -p'
 alias gch='git checkout'
 
-alias ge='goop exec'
+# use Neovim instead of Vim
+alias vim='nvim'
