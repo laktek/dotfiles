@@ -126,9 +126,6 @@ nmap <F1> <Esc>
 " Press ^F from insert mode to insert the current file name
 imap <C-F> <C-R>=expand("%")<CR>
 
-" Toggles NERDTree
-map <leader>d :execute 'NERDTreeToggle ' . getcwd()<CR>
-
 " set the current directory to the working buffer
 map <leader>cd :cd %:p:h<CR>
 
