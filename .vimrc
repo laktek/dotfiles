@@ -223,3 +223,6 @@ let g:ale_fix_on_save = 1
 
 " Enable Ale completion where available.
 let g:ale_completion_enabled = 1
+
+" Run rustfmt on save
+let g:rustfmt_autosave = 1
