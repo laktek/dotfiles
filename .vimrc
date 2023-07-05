@@ -88,12 +88,15 @@ set tabstop=2    " a tab is two spaces
 set expandtab    " use spaces, not tabs
 set backspace=indent,eol,start " backspace through everything
 
+" Display extra whitespace
 set list
 set listchars=""          " reset listchars
 set listchars=tab:‣\      " display tabs with a sign
 set listchars+=trail:·    " display trailing whitespaces with a dot
 set listchars+=extends:»  " right wrap
 set listchars+=precedes:« " left wrap
+
+nmap <silent> <leader>s :set nolist!<CR>
 
 " Set leader key to ','
 let mapleader = ","
@@ -128,10 +131,6 @@ imap <C-F> <C-R>=expand("%")<CR>
 
 " set the current directory to the working buffer
 map <leader>cd :cd %:p:h<CR>
-
-" Display extra whitespace
-set listchars=tab:>-,trail:·,
-nmap <silent> <leader>s :set nolist!<CR>
 
 " Local config
 if filereadable(".vimrc.local")
@@ -204,15 +203,15 @@ set pastetoggle=<F2>
 set showmode
 
 " Tsuquyomi TypeScript plugin
-let g:tsuquyomi_disable_default_mappings = 1
-map <buffer> <C-i> <Plug>(TsuquyomiReferences)
-map <buffer> <C-]> <Plug>(TsuquyomiDefinition)
+" let g:tsuquyomi_disable_default_mappings = 1
+" map <buffer> <C-i> <Plug>(TsuquyomiReferences)
+" map <buffer> <C-]> <Plug>(TsuquyomiDefinition)
 
 " Configure Ale fixers
 let g:ale_fixers = {
 \   '*': ['remove_trailing_lines', 'trim_whitespace'],
-\   'javascript': ['prettier', 'eslint'],
-\   'typescript': ['tslint', 'prettier'],
+\   'javascript': ['prettier', 'deno', 'eslint'],
+\   'typescript': ['deno', 'prettier'],
 \}
 
 " Only run ale for explicitly enabled languages
