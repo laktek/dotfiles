@@ -18,24 +18,49 @@ if !exists('s:timer_args')
     let s:timer_args = {}
 endif
 
-" Return 1 if there is a buffer with buftype == 'quickfix' in bufffer list
+" Return 1 if there is a buffer with buftype == 'quickfix' in buffer list
 function! ale#list#IsQuickfixOpen() abort
-    for l:buf in range(1, bufnr('$'))
-        if getbufvar(l:buf, '&buftype') is# 'quickfix'
-            return 1
-        endif
-    endfor
+    let l:res = getqflist({ 'winid' : winnr() })
+
+    if has_key(l:res, 'winid') && l:res.winid > 0
+        return 1
+    endif
+
+    let l:res = getloclist(0, { 'winid' : winnr() })
+
+    if has_key(l:res, 'winid') && l:res.winid > 0
+        return 1
+    endif
 
     return 0
 endfunction
 
 " Check if we should open the list, based on the save event being fired, and
-" that setting being on, or the setting just being set to `1`.
-function! s:ShouldOpen(buffer) abort
+" that setting being on, or that the error count is at least as high as the
+" setting when set to an integer value.
+function! s:ShouldOpen(buffer, loclist_len) abort
     let l:val = ale#Var(a:buffer, 'open_list')
     let l:saved = getbufvar(a:buffer, 'ale_save_event_fired', 0)
 
-    return l:val is 1 || (l:val is# 'on_save' && l:saved)
+    return l:val > 0 ? a:loclist_len >= l:val : l:val is# 'on_save' && l:saved
+endfunction
+
+" Check if we should close the list, based on the save event being fired, and
+" that setting being on, or the setting just being set to an integer value.
+function! s:ShouldClose(buffer) abort
+    let l:val = ale#Var(a:buffer, 'open_list')
+    let l:saved = getbufvar(a:buffer, 'ale_save_event_fired', 0)
+
+    return !((l:val >= 1) || (l:val is# 'on_save' && l:saved))
+endfunction
+
+function! s:Deduplicate(list) abort
+    let l:list = a:list
+
+    call sort(l:list, function('ale#util#LocItemCompareWithText'))
+    call uniq(l:list, function('ale#util#LocItemCompareWithText'))
+
+    return l:list
 endfunction
 
 function! ale#list#GetCombinedList() abort
@@ -45,10 +70,7 @@ function! ale#list#GetCombinedList() abort
         call extend(l:list, l:info.loclist)
     endfor
 
-    call sort(l:list, function('ale#util#LocItemCompareWithText'))
-    call uniq(l:list, function('ale#util#LocItemCompareWithText'))
-
-    return l:list
+    return s:Deduplicate(l:list)
 endfunction
 
 function! s:FixList(buffer, list) abort
@@ -71,8 +93,8 @@ function! s:FixList(buffer, list) abort
     return l:new_list
 endfunction
 
-function! s:BufWinId(buffer) abort
-    return exists('*bufwinid') ? bufwinid(str2nr(a:buffer)) : 0
+function! s:WinFindBuf(buffer) abort
+    return exists('*win_findbuf') ? win_findbuf(str2nr(a:buffer)) : [0]
 endfunction
 
 function! s:SetListsImpl(timer_id, buffer, loclist) abort
@@ -88,34 +110,39 @@ function! s:SetListsImpl(timer_id, buffer, loclist) abort
             call setqflist([], 'r', {'title': l:title})
         endif
     elseif g:ale_set_loclist
-        " If windows support is off, bufwinid() may not exist.
+        " If windows support is off, win_findbuf() may not exist.
         " We'll set result in the current window, which might not be correct,
         " but it's better than nothing.
-        let l:id = s:BufWinId(a:buffer)
+        let l:ids = s:WinFindBuf(a:buffer)
 
-        if has('nvim')
-            call setloclist(l:id, s:FixList(a:buffer, a:loclist), ' ', l:title)
-        else
-            call setloclist(l:id, s:FixList(a:buffer, a:loclist))
-            call setloclist(l:id, [], 'r', {'title': l:title})
-        endif
+        let l:loclist = s:Deduplicate(a:loclist)
+
+        for l:id in l:ids
+            if has('nvim')
+                call setloclist(l:id, s:FixList(a:buffer, l:loclist), ' ', l:title)
+            else
+                call setloclist(l:id, s:FixList(a:buffer, l:loclist))
+                call setloclist(l:id, [], 'r', {'title': l:title})
+            endif
+        endfor
     endif
+
+    " Save the current view before opening/closing any window
+    call setbufvar(a:buffer, 'ale_winview', winsaveview())
 
     " Open a window to show the problems if we need to.
     "
-    " We'll check if the current buffer's List is not empty here, so the
-    " window will only be opened if the current buffer has problems.
-    if s:ShouldOpen(a:buffer) && !empty(a:loclist)
+    " ShouldOpen() checks if the current buffer has enough problems to be
+    " opened.
+    if s:ShouldOpen(a:buffer, len(a:loclist))
         let l:winnr = winnr()
         let l:mode = mode()
-        let l:reset_visual_selection = l:mode is? 'v' || l:mode is# "\<c-v>"
-        let l:reset_character_selection = l:mode is? 's' || l:mode is# "\<c-s>"
 
         " open windows vertically instead of default horizontally
         let l:open_type = ''
 
         if ale#Var(a:buffer, 'list_vertical') == 1
-            let l:open_type = 'vert '
+            let l:open_type = 'vert rightbelow '
         endif
 
         if g:ale_set_quickfix
@@ -131,15 +158,18 @@ function! s:SetListsImpl(timer_id, buffer, loclist) abort
             wincmd p
         endif
 
-        if l:reset_visual_selection || l:reset_character_selection
-            " If we were in a selection mode before, select the last selection.
-            normal! gv
-
-            if l:reset_character_selection
-                " Switch back to Select mode, if we were in that.
+        " Return to original mode when applicable
+        if mode() != l:mode
+            if l:mode is? 'v' || l:mode is# "\<c-v>"
+                " Reset our last visual selection
+                normal! gv
+            elseif l:mode is? 's' || l:mode is# "\<c-s>"
+                " Reset our last character selection
                 normal! "\<c-g>"
             endif
         endif
+
+        call s:RestoreViewIfNeeded(a:buffer)
     endif
 
     " If ALE isn't currently checking for more problems, close the window if
@@ -147,6 +177,30 @@ function! s:SetListsImpl(timer_id, buffer, loclist) abort
     " the window can be closed reliably.
     if !ale#engine#IsCheckingBuffer(a:buffer)
         call s:CloseWindowIfNeeded(a:buffer)
+    endif
+endfunction
+
+" Try to restore the window view after closing any of the lists to avoid making
+" the it moving around, especially useful when on insert mode
+function! s:RestoreViewIfNeeded(buffer) abort
+    let l:saved_view = getbufvar(a:buffer, 'ale_winview', {})
+
+    " Saved view is empty, can't do anything
+    if empty(l:saved_view)
+        return
+    endif
+
+    " Check whether the cursor has moved since linting was actually requested. If
+    " the user has indeed moved lines, do nothing
+    let l:current_view = winsaveview()
+
+    if l:current_view['lnum'] != l:saved_view['lnum']
+        return
+    endif
+
+    " Anchor view by topline if the list is set to open horizontally
+    if ale#Var(a:buffer, 'list_vertical') == 0
+        call winrestview({'topline': l:saved_view['topline']})
     endif
 endfunction
 
@@ -168,10 +222,29 @@ function! ale#list#SetLists(buffer, loclist) abort
     endif
 endfunction
 
+function! ale#list#ForcePopulateErrorList(populate_quickfix) abort
+    let l:quickfix_bak = g:ale_set_quickfix
+    let g:ale_set_quickfix = a:populate_quickfix
+    let l:loclist_bak = g:ale_set_loclist
+    let g:ale_set_loclist = !a:populate_quickfix
+    let l:open_list_bak = g:ale_open_list
+    let g:ale_open_list = 1
+
+    let l:buffer = bufnr('')
+    let l:loclist = get(g:ale_buffer_info, l:buffer, {'loclist': []}).loclist
+    call s:SetListsImpl(-1, l:buffer, l:loclist)
+
+    let g:ale_open_list = l:open_list_bak
+    let g:ale_set_loclist = l:loclist_bak
+    let g:ale_set_quickfix = l:quickfix_bak
+endfunction
+
 function! s:CloseWindowIfNeeded(buffer) abort
-    if ale#Var(a:buffer, 'keep_list_window_open') || !s:ShouldOpen(a:buffer)
+    if ale#Var(a:buffer, 'keep_list_window_open') || s:ShouldClose(a:buffer)
         return
     endif
+
+    let l:did_close_any_list = 0
 
     try
         " Only close windows if the quickfix list or loclist is completely empty,
@@ -179,15 +252,23 @@ function! s:CloseWindowIfNeeded(buffer) abort
         if g:ale_set_quickfix
             if empty(getqflist())
                 cclose
+                let l:did_close_any_list = 1
             endif
         else
-            let l:win_id = s:BufWinId(a:buffer)
+            let l:win_ids = s:WinFindBuf(a:buffer)
 
-            if g:ale_set_loclist && empty(getloclist(l:win_id))
-                lclose
-            endif
+            for l:win_id in l:win_ids
+                if g:ale_set_loclist && empty(getloclist(l:win_id))
+                    lclose
+                    let l:did_close_any_list = 1
+                endif
+            endfor
         endif
     " Ignore 'Cannot close last window' errors.
     catch /E444/
     endtry
+
+    if l:did_close_any_list
+        call s:RestoreViewIfNeeded(a:buffer)
+    endif
 endfunction

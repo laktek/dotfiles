@@ -5,13 +5,17 @@
 " Strings used for severity in the echoed message
 let g:ale_echo_msg_error_str = get(g:, 'ale_echo_msg_error_str', 'Error')
 let g:ale_echo_msg_info_str = get(g:, 'ale_echo_msg_info_str', 'Info')
+let g:ale_echo_msg_log_str = get(g:, 'ale_echo_msg_log_str', 'Log')
 let g:ale_echo_msg_warning_str = get(g:, 'ale_echo_msg_warning_str', 'Warning')
-" Ignoring linters, for disabling some, or ignoring LSP diagnostics.
-let g:ale_linters_ignore = get(g:, 'ale_linters_ignore', {})
+
+" LSP window/showMessage format
+let g:ale_lsp_show_message_format = get(g:, 'ale_lsp_show_message_format', '%severity%:%linter%: %s')
+" Valid values mimic LSP definitions (error, warning and information; log is
+" never shown)
+let g:ale_lsp_show_message_severity = get(g:, 'ale_lsp_show_message_severity', 'error')
 
 let s:lint_timer = -1
-let s:queued_buffer_number = -1
-let s:should_lint_file_for_buffer = {}
+let s:getcmdwintype_exists = exists('*getcmdwintype')
 
 " Return 1 if a file is too large for ALE to handle.
 function! ale#FileTooLarge(buffer) abort
@@ -19,8 +23,6 @@ function! ale#FileTooLarge(buffer) abort
 
     return l:max > 0 ? (line2byte(line('$') + 1) > l:max) : 0
 endfunction
-
-let s:getcmdwintype_exists = exists('*getcmdwintype')
 
 " A function for checking various conditions whereby ALE just shouldn't
 " attempt to do anything, say if particular buffer types are open in Vim.
@@ -42,6 +44,11 @@ function! ale#ShouldDoNothing(buffer) abort
 
     " Do nothing when there's no filetype.
     if l:filetype is# ''
+        return 1
+    endif
+
+    " Do nothing for diff buffers.
+    if getbufvar(a:buffer, '&diff')
         return 1
     endif
 
@@ -86,18 +93,56 @@ function! ale#ShouldDoNothing(buffer) abort
     return 0
 endfunction
 
+function! s:Lint(buffer, should_lint_file, timer_id) abort
+    " Use the filetype from the buffer
+    let l:filetype = getbufvar(a:buffer, '&filetype')
+    let l:linters = ale#linter#Get(l:filetype)
+
+    let l:ignore_config = ale#Var(a:buffer, 'linters_ignore')
+    let l:disable_lsp = ale#Var(a:buffer, 'disable_lsp')
+
+    " Load code to ignore linters only if we need to.
+    if (
+    \   !empty(l:ignore_config)
+    \   || l:disable_lsp is 1
+    \   || l:disable_lsp is v:true
+    \   || (l:disable_lsp is# 'auto' && get(g:, 'lspconfig', 0))
+    \)
+        let l:linters = ale#engine#ignore#Exclude(
+        \   l:filetype,
+        \   l:linters,
+        \   l:ignore_config,
+        \   l:disable_lsp,
+        \)
+    endif
+
+    " Tell other sources that they can start checking the buffer now.
+    let g:ale_want_results_buffer = a:buffer
+    silent doautocmd <nomodeline> User ALEWantResults
+    unlet! g:ale_want_results_buffer
+
+    " Don't set up buffer data and so on if there are no linters to run.
+    if !has_key(g:ale_buffer_info, a:buffer) && empty(l:linters)
+        return
+    endif
+
+    " Clear lint_file linters, or only run them if the file exists.
+    let l:lint_file = empty(l:linters)
+    \   || (a:should_lint_file && filereadable(expand('#' . a:buffer . ':p')))
+
+    call ale#engine#RunLinters(a:buffer, l:linters, l:lint_file)
+endfunction
+
 " (delay, [linting_flag, buffer_number])
 function! ale#Queue(delay, ...) abort
     if a:0 > 2
         throw 'too many arguments!'
     endif
 
-    " Default linting_flag to ''
-    let l:linting_flag = get(a:000, 0, '')
-    let l:buffer = get(a:000, 1, bufnr(''))
+    let l:buffer = get(a:000, 1, v:null)
 
-    if l:linting_flag isnot# '' && l:linting_flag isnot# 'lint_file'
-        throw "linting_flag must be either '' or 'lint_file'"
+    if l:buffer is v:null
+        let l:buffer = bufnr('')
     endif
 
     if type(l:buffer) isnot v:t_number
@@ -108,86 +153,37 @@ function! ale#Queue(delay, ...) abort
         return
     endif
 
-    " Remember that we want to check files for this buffer.
-    " We will remember this until we finally run the linters, via any event.
-    if l:linting_flag is# 'lint_file'
-        let s:should_lint_file_for_buffer[l:buffer] = 1
-    endif
+    " Default linting_flag to ''
+    let l:should_lint_file = get(a:000, 0) is# 'lint_file'
 
     if s:lint_timer != -1
         call timer_stop(s:lint_timer)
         let s:lint_timer = -1
     endif
 
-    let l:linters = ale#linter#Get(getbufvar(l:buffer, '&filetype'))
-
-    " Don't set up buffer data and so on if there are no linters to run.
-    if empty(l:linters)
-        " If we have some previous buffer data, then stop any jobs currently
-        " running and clear everything.
-        if has_key(g:ale_buffer_info, l:buffer)
-            call ale#engine#RunLinters(l:buffer, [], 1)
-        endif
-
-        return
-    endif
-
     if a:delay > 0
-        let s:queued_buffer_number = l:buffer
-        let s:lint_timer = timer_start(a:delay, function('ale#Lint'))
+        let s:lint_timer = timer_start(
+        \   a:delay,
+        \   function('s:Lint', [l:buffer, l:should_lint_file])
+        \)
     else
-        call ale#Lint(-1, l:buffer)
+        call s:Lint(l:buffer, l:should_lint_file, 0)
     endif
 endfunction
 
-function! ale#Lint(...) abort
-    if a:0 > 1
-        " Use the buffer number given as the optional second argument.
-        let l:buffer = a:2
-    elseif a:0 > 0 && a:1 == s:lint_timer
-        " Use the buffer number for the buffer linting was queued for.
-        let l:buffer = s:queued_buffer_number
-    else
-        " Use the current buffer number.
-        let l:buffer = bufnr('')
-    endif
+let s:current_ale_version = [3, 3, 0]
 
-    if ale#ShouldDoNothing(l:buffer)
-        return
-    endif
-
-    " Use the filetype from the buffer
-    let l:filetype = getbufvar(l:buffer, '&filetype')
-    let l:linters = ale#linter#Get(l:filetype)
-    let l:should_lint_file = 0
-
-    " Check if we previously requested checking the file.
-    if has_key(s:should_lint_file_for_buffer, l:buffer)
-        unlet s:should_lint_file_for_buffer[l:buffer]
-        " Lint files if they exist.
-        let l:should_lint_file = filereadable(expand('#' . l:buffer . ':p'))
-    endif
-
-    " Apply ignore lists for linters only if needed.
-    let l:ignore_config = ale#Var(l:buffer, 'linters_ignore')
-    let l:linters = !empty(l:ignore_config)
-    \   ? ale#engine#ignore#Exclude(l:filetype, l:linters, l:ignore_config)
-    \   : l:linters
-
-    call ale#engine#RunLinters(l:buffer, l:linters, l:should_lint_file)
-endfunction
-
-" Reset flags indicating that files should be checked for all buffers.
-function! ale#ResetLintFileMarkers() abort
-    let s:should_lint_file_for_buffer = {}
-endfunction
-
-let g:ale_has_override = get(g:, 'ale_has_override', {})
-
-" Call has(), but check a global Dictionary so we can force flags on or off
-" for testing purposes.
+" A function used to check for ALE features in files outside of the project.
 function! ale#Has(feature) abort
-    return get(g:ale_has_override, a:feature, has(a:feature))
+    let l:match = matchlist(a:feature, '\c\v^ale-(\d+)\.(\d+)(\.(\d+))?$')
+
+    if !empty(l:match)
+        let l:version = [l:match[1] + 0, l:match[2] + 0, l:match[4] + 0]
+
+        return ale#semver#GTE(s:current_ale_version, l:version)
+    endif
+
+    return 0
 endfunction
 
 " Given a buffer number and a variable name, look for that variable in the
@@ -200,11 +196,6 @@ function! ale#Var(buffer, variable_name) abort
     let l:vars = getbufvar(str2nr(a:buffer), '', {})
 
     return get(l:vars, l:full_name, g:[l:full_name])
-endfunction
-
-" As above, but curry the arguments so only the buffer number is required.
-function! ale#VarFunc(variable_name) abort
-    return {buf -> ale#Var(buf, a:variable_name)}
 endfunction
 
 " Initialize a variable with a default value, if it isn't already set.
@@ -231,7 +222,7 @@ endfunction
 " valid for cmd on Windows, or most shells on Unix.
 function! ale#Env(variable_name, value) abort
     if has('win32')
-        return 'set ' . a:variable_name . '=' . ale#Escape(a:value) . ' && '
+        return 'set ' . ale#Escape(a:variable_name . '=' . a:value) . ' && '
     endif
 
     return a:variable_name . '=' . ale#Escape(a:value) . ' '
@@ -275,11 +266,34 @@ function! ale#GetLocItemMessage(item, format_string) abort
 
     " Replace special markers with certain information.
     " \=l:variable is used to avoid escaping issues.
-    let l:msg = substitute(l:msg, '\V%severity%', '\=l:severity', 'g')
-    let l:msg = substitute(l:msg, '\V%linter%', '\=l:linter_name', 'g')
     let l:msg = substitute(l:msg, '\v\%([^\%]*)code([^\%]*)\%', l:code_repl, 'g')
+    let l:msg = substitute(l:msg, '\V%severity%', '\=l:severity', 'g')
+    let l:msg = substitute(l:msg, '\V%type%', '\=l:type', 'g')
+    let l:msg = substitute(l:msg, '\V%linter%', '\=l:linter_name', 'g')
     " Replace %s with the text.
     let l:msg = substitute(l:msg, '\V%s', '\=a:item.text', 'g')
+    " Windows may insert carriage return line endings (^M), strip these characters.
+    let l:msg = substitute(l:msg, '\r', '', 'g')
 
     return l:msg
+endfunction
+
+" Given a buffer and a linter or fixer name, return an Array of two-item
+" Arrays describing how to map filenames to and from the local to foreign file
+" systems.
+function! ale#GetFilenameMappings(buffer, name) abort
+    let l:linter_mappings = ale#Var(a:buffer, 'filename_mappings')
+
+    if type(l:linter_mappings) is v:t_list
+        return l:linter_mappings
+    endif
+
+    let l:name = a:name
+
+    if !has_key(l:linter_mappings, l:name)
+        " Use * as a default setting for all tools.
+        let l:name = '*'
+    endif
+
+    return get(l:linter_mappings, l:name, [])
 endfunction

@@ -11,8 +11,7 @@ function! ale#fixers#ocamlformat#Fix(buffer) abort
     return {
     \   'command': ale#Escape(l:executable)
     \       . (empty(l:options) ? '' : ' ' . l:options)
-    \       . ' --inplace'
-    \       . ' %t',
-    \   'read_temporary_file': 1,
+    \       . ' --name=%s'
+    \       . ' -'
     \}
 endfunction

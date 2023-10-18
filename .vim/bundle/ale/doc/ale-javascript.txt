@@ -17,11 +17,38 @@ You should change the structure of your project from this: >
   /path/foo/.eslintrc.js # root: true
   /path/foo/bar/.eslintrc.js # root: false
 <
+
 To this: >
   /path/foo/.base-eslintrc.js # Base configuration here
   /path/foo/.eslintrc.js # extends: ["/path/foo/.base-eslintrc.js"]
   /path/foo/bar/.eslintrc.js # extends: ["/path/foo/.base-eslintrc.js"]
 <
+
+
+===============================================================================
+clang-format                                       *ale-javascript-clangformat*
+
+See |ale-c-clangformat| for information about the available options.
+Note that the C options are also used for JavaScript.
+
+
+===============================================================================
+cspell                                                  *ale-javascript-cspell*
+
+See |ale-cspell-options|
+
+
+===============================================================================
+deno                                                      *ale-javascript-deno*
+
+Check the docs over at |ale-typescript-deno|.
+
+
+===============================================================================
+dprint                                                  *ale-javascript-dprint*
+
+See |ale-dprint-options| and https://dprint.dev/plugins/typescript
+
 
 ===============================================================================
 eslint                                                  *ale-javascript-eslint*
@@ -74,6 +101,33 @@ g:ale_javascript_eslint_suppress_missing_config
 
 
 ===============================================================================
+fecs                                                      *ale-javascript-fecs*
+
+`fecs` is a lint tool for HTML/CSS/JavaScript, can be installed via:
+
+  `$ npm install --save-dev fecs`
+
+And the configuration file is located at `./fecsrc`, see http://fecs.baidu.com
+for more options.
+
+
+g:ale_javascript_fecs_executable             *g:ale_javascript_fecs_executable*
+                                             *b:ale_javascript_fecs_executable*
+  Type: |String|
+  Default: `'fecs'`
+
+  See |ale-integrations-local-executables|
+
+
+g:ale_javascript_fecs_use_global             *g:ale_javascript_fecs_use_global*
+                                             *b:ale_javascript_fecs_use_global*
+  Type: |Number|
+  Default: `get(g:, 'ale_use_global_executables', 0)`
+
+  See |ale-integrations-local-executables|
+
+
+===============================================================================
 flow                                                      *ale-javascript-flow*
 
 g:ale_javascript_flow_executable             *g:ale_javascript_flow_executable*
@@ -111,7 +165,7 @@ g:ale_javascript_flow_use_respect_pragma
 
   By default, ALE will use the `--respect-pragma` option for `flow`, so only
   files with the `@flow` pragma are checked by ALE. This option can be set to
-  `0` to disable that behaviour, so all files can be checked by `flow`.
+  `0` to disable that behavior, so all files can be checked by `flow`.
 
 
 ===============================================================================

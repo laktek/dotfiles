@@ -9,8 +9,6 @@ After:
   call ale#test#RestoreDirectory()
   call ale#linter#Reset()
 
-  silent file something_else.py
-
 Execute(Basic vulture check with relative path in result should be handled):
   call ale#test#SetFilename('something_else.py')
   AssertEqual
@@ -70,7 +68,7 @@ Execute(Vulture exception should be handled):
   \ [
   \   {
   \     'lnum': 1,
-  \     'text': 'An exception was thrown. See :ALEDetail',
+  \     'text': 'BaddestException: Everything gone wrong (See :ALEDetail)',
   \     'detail': join([
   \       'Traceback (most recent call last):',
   \       '  File "/usr/lib/python3.6/site-packages/vulture/__init__.py", line 13, in <module>',

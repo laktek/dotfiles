@@ -1,28 +1,32 @@
-" Author: richard marmorstein <https://github.com/twitchard>
+" Author: Matt Brown <https://github.com/muglug>
 " Description: plugin for Psalm, static analyzer for PHP
 
 call ale#Set('php_psalm_executable', 'psalm')
+call ale#Set('php_psalm_options', '')
+call ale#Set('php_psalm_use_global', get(g:, 'ale_use_global_executables', 0))
 
-function! ale_linters#php#psalm#Handle(buffer, lines) abort
-    " Matches patterns like the following:
-    let l:pattern = '^.*:\(\d\+\):\(\d\+\):\(\w\+\) - \(.*\)$'
-    let l:output = []
+function! ale_linters#php#psalm#GetProjectRoot(buffer) abort
+    let l:composer_path = ale#path#FindNearestFile(a:buffer, 'composer.json')
 
-    for l:match in ale#util#GetMatches(a:lines, l:pattern)
-        call add(l:output, {
-        \   'lnum': l:match[1] + 0,
-        \   'text': l:match[4],
-        \   'type': l:match[3][:0] is# 'e' ? 'E' : 'W',
-        \})
-    endfor
+    if (!empty(l:composer_path))
+        return fnamemodify(l:composer_path, ':h')
+    endif
 
-    return l:output
+    let l:git_path = ale#path#FindNearestDirectory(a:buffer, '.git')
+
+    return !empty(l:git_path) ? fnamemodify(l:git_path, ':h:h') : ''
+endfunction
+
+function! ale_linters#php#psalm#GetCommand(buffer) abort
+    return '%e --language-server' . ale#Pad(ale#Var(a:buffer, 'php_psalm_options'))
 endfunction
 
 call ale#linter#Define('php', {
 \   'name': 'psalm',
-\   'command': '%e --diff --output-format=emacs %s',
-\   'executable_callback': ale#VarFunc('php_psalm_executable'),
-\   'callback': 'ale_linters#php#psalm#Handle',
-\   'lint_file': 1,
+\   'lsp': 'stdio',
+\   'executable': {b -> ale#path#FindExecutable(b, 'php_psalm', [
+\       'vendor/bin/psalm',
+\   ])},
+\   'command': function('ale_linters#php#psalm#GetCommand'),
+\   'project_root': function('ale_linters#php#psalm#GetProjectRoot'),
 \})

@@ -16,19 +16,25 @@ endfunction
 " Vim 8 does not support echoing long messages from asynchronous callbacks,
 " but NeoVim does. Small messages can be echoed in Vim 8, and larger messages
 " have to be shown in preview windows.
-function! ale#util#ShowMessage(string) abort
+function! ale#util#ShowMessage(string, ...) abort
+    let l:options = get(a:000, 0, {})
+
     if !has('nvim')
         call ale#preview#CloseIfTypeMatches('ale-preview.message')
     endif
 
     " We have to assume the user is using a monospace font.
     if has('nvim') || (a:string !~? "\n" && len(a:string) < &columns)
-        execute 'echo a:string'
+        " no-custom-checks
+        echo a:string
     else
-        call ale#preview#Show(split(a:string, "\n"), {
-        \   'filetype': 'ale-preview.message',
-        \   'stay_here': 1,
-        \})
+        call ale#preview#Show(split(a:string, "\n"), extend(
+        \   {
+        \       'filetype': 'ale-preview.message',
+        \       'stay_here': 1,
+        \   },
+        \   l:options,
+        \))
     endif
 endfunction
 
@@ -87,17 +93,31 @@ function! ale#util#GetFunction(string_or_ref) abort
     return a:string_or_ref
 endfunction
 
+" Open the file (at the given line).
+" options['open_in'] can be:
+"   current-buffer (default)
+"   tab
+"   split
+"   vsplit
 function! ale#util#Open(filename, line, column, options) abort
-    if get(a:options, 'open_in_tab', 0)
-        call ale#util#Execute('tabedit +' . a:line . ' ' . fnameescape(a:filename))
+    let l:open_in = get(a:options, 'open_in', 'current-buffer')
+    let l:args_to_open = '+' . a:line . ' ' . fnameescape(a:filename)
+
+    if l:open_in is# 'tab'
+        call ale#util#Execute('tabedit ' . l:args_to_open)
+    elseif l:open_in is# 'split'
+        call ale#util#Execute('split ' . l:args_to_open)
+    elseif l:open_in is# 'vsplit'
+        call ale#util#Execute('vsplit ' . l:args_to_open)
     elseif bufnr(a:filename) isnot bufnr('')
         " Open another file only if we need to.
-        call ale#util#Execute('edit +' . a:line . ' ' . fnameescape(a:filename))
+        call ale#util#Execute('edit ' . l:args_to_open)
     else
         normal! m`
     endif
 
     call cursor(a:line, a:column)
+    normal! zz
 endfunction
 
 let g:ale#util#error_priority = 5
@@ -321,16 +341,22 @@ function! ale#util#GetMatches(lines, patterns) abort
     return l:matches
 endfunction
 
+" Given a single line, or a List of lines, and a single pattern, or a List of
+" patterns, and a callback function for mapping the items matches, return the
+" result of mapping all of the matches for the lines from the given patterns,
+" using matchlist()
+"
+" Only the first pattern which matches a line will be returned.
+function! ale#util#MapMatches(lines, patterns, Callback) abort
+    return map(ale#util#GetMatches(a:lines, a:patterns), 'a:Callback(v:val)')
+endfunction
+
 function! s:LoadArgCount(function) abort
-    let l:Function = a:function
-
-    redir => l:output
-        silent! function Function
-    redir END
-
-    if !exists('l:output')
+    try
+        let l:output = execute('function a:function')
+    catch /E123/
         return 0
-    endif
+    endtry
 
     let l:match = matchstr(split(l:output, "\n")[0], '\v\([^)]+\)')[1:-2]
     let l:arg_list = filter(split(l:match, ', '), 'v:val isnot# ''...''')
@@ -394,7 +420,7 @@ function! ale#util#FuzzyJSONDecode(data, default) abort
         endif
 
         return l:result
-    catch /E474/
+    catch /E474\|E491/
         return a:default
     endtry
 endfunction
@@ -408,7 +434,10 @@ function! ale#util#Writefile(buffer, lines, filename) abort
     \   ? map(copy(a:lines), 'substitute(v:val, ''\r*$'', ''\r'', '''')')
     \   : a:lines
 
-    call writefile(l:corrected_lines, a:filename) " no-custom-checks
+    " Set binary flag if buffer doesn't have eol and nofixeol to avoid appending newline
+    let l:flags = !getbufvar(a:buffer, '&eol') && exists('+fixeol') && !&fixeol ? 'bS' : 'S'
+
+    call writefile(l:corrected_lines, a:filename, l:flags) " no-custom-checks
 endfunction
 
 if !exists('s:patial_timers')
@@ -451,4 +480,106 @@ function! ale#util#Col(str, chr) abort
     endif
 
     return strlen(join(split(a:str, '\zs')[0:a:chr - 2], '')) + 1
+endfunction
+
+function! ale#util#FindItemAtCursor(buffer) abort
+    let l:info = get(g:ale_buffer_info, a:buffer, {})
+    let l:loclist = get(l:info, 'loclist', [])
+    let l:pos = getpos('.')
+    let l:index = ale#util#BinarySearch(l:loclist, a:buffer, l:pos[1], l:pos[2])
+    let l:loc = l:index >= 0 ? l:loclist[l:index] : {}
+
+    return [l:info, l:loc]
+endfunction
+
+function! ale#util#Input(message, value, ...) abort
+    if a:0 > 0
+        return input(a:message, a:value, a:1)
+    else
+        return input(a:message, a:value)
+    endif
+endfunction
+
+function! ale#util#HasBuflineApi() abort
+    return exists('*deletebufline') && exists('*setbufline')
+endfunction
+
+" Sets buffer contents to lines
+function! ale#util#SetBufferContents(buffer, lines) abort
+    let l:has_bufline_api = ale#util#HasBuflineApi()
+
+    if !l:has_bufline_api && a:buffer isnot bufnr('')
+        return
+    endif
+
+    " If the file is in DOS mode, we have to remove carriage returns from
+    " the ends of lines before calling setline(), or we will see them
+    " twice.
+    let l:new_lines = getbufvar(a:buffer, '&fileformat') is# 'dos'
+    \   ? map(copy(a:lines), 'substitute(v:val, ''\r\+$'', '''', '''')')
+    \   : a:lines
+    let l:first_line_to_remove = len(l:new_lines) + 1
+
+    " Use a Vim API for setting lines in other buffers, if available.
+    if l:has_bufline_api
+        if has('nvim')
+            " save and restore signs to avoid flickering
+            let signs = sign_getplaced(a:buffer, {'group': 'ale'})[0].signs
+
+            call nvim_buf_set_lines(a:buffer, 0, l:first_line_to_remove, 0, l:new_lines)
+
+            " restore signs (invalid line numbers will be skipped)
+            call sign_placelist(map(signs, {_, v -> extend(v, {'buffer': a:buffer})}))
+        else
+            call setbufline(a:buffer, 1, l:new_lines)
+        endif
+
+        call deletebufline(a:buffer, l:first_line_to_remove, '$')
+    " Fall back on setting lines the old way, for the current buffer.
+    else
+        let l:old_line_length = line('$')
+
+        if l:old_line_length >= l:first_line_to_remove
+            let l:save = winsaveview()
+            silent execute
+            \   l:first_line_to_remove . ',' . l:old_line_length . 'd_'
+            call winrestview(l:save)
+        endif
+
+        call setline(1, l:new_lines)
+    endif
+
+    return l:new_lines
+endfunction
+
+function! ale#util#GetBufferContents(buffer) abort
+    return join(getbufline(a:buffer, 1, '$'), "\n") . "\n"
+endfunction
+
+function! ale#util#ToURI(resource) abort
+    let l:uri_handler = ale#uri#GetURIHandler(a:resource)
+
+    if l:uri_handler is# v:null
+        " resource is a filesystem path
+        let l:uri = ale#path#ToFileURI(a:resource)
+    else
+        " resource is a URI
+        let l:uri = a:resource
+    endif
+
+    return l:uri
+endfunction
+
+function! ale#util#ToResource(uri) abort
+    let l:uri_handler = ale#uri#GetURIHandler(a:uri)
+
+    if l:uri_handler is# v:null
+        " resource is a filesystem path
+        let l:resource = ale#path#FromFileURI(a:uri)
+    else
+        " resource is a URI
+        let l:resource = a:uri
+    endif
+
+    return l:resource
 endfunction

@@ -1,10 +1,5 @@
 " Author: w0rp <devw0rp@gmail.com>
-" Description: Lints sh files using bash -n
-
-" Backwards compatibility
-if exists('g:ale_linters_sh_shell_default_shell')
-    let g:ale_sh_shell_default_shell = g:ale_linters_sh_shell_default_shell
-endif
+" Description: Lints shell files by invoking the shell with -n
 
 " This option can be changed to change the default shell when the shell
 " cannot be taken from the hashbang line.
@@ -34,8 +29,10 @@ function! ale_linters#sh#shell#Handle(buffer, lines) abort
     " Matches patterns line the following:
     "
     " bash: line 13: syntax error near unexpected token `d'
+    " bash:行0: 未预期的符号“done”附近有语法错误
+    " bash: 列 90: 尋找匹配的「"」時遇到了未預期的檔案結束符
     " sh: 11: Syntax error: "(" unexpected
-    let l:pattern = '\v(line |: ?)(\d+): (.+)$'
+    let l:pattern = '\v([^:]+:\D*)(\d+): (.+)$'
     let l:output = []
 
     for l:match in ale#util#GetMatches(a:lines, l:pattern)
@@ -51,7 +48,7 @@ endfunction
 call ale#linter#Define('sh', {
 \   'name': 'shell',
 \   'output_stream': 'stderr',
-\   'executable_callback': 'ale_linters#sh#shell#GetExecutable',
-\   'command_callback': 'ale_linters#sh#shell#GetCommand',
+\   'executable': function('ale_linters#sh#shell#GetExecutable'),
+\   'command': function('ale_linters#sh#shell#GetCommand'),
 \   'callback': 'ale_linters#sh#shell#Handle',
 \})

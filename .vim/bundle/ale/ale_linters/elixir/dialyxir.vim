@@ -28,7 +28,7 @@ endfunction
 call ale#linter#Define('elixir', {
 \   'name': 'dialyxir',
 \   'executable': 'mix',
+\   'cwd': function('ale#handlers#elixir#FindMixProjectRoot'),
 \   'command': 'mix help dialyzer && mix dialyzer',
 \   'callback': 'ale_linters#elixir#dialyxir#Handle',
 \})
-

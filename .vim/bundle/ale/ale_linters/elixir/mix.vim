@@ -29,34 +29,17 @@ function! ale_linters#elixir#mix#Handle(buffer, lines) abort
     return l:output
 endfunction
 
-function! ale_linters#elixir#mix#FindProjectRoot(buffer) abort
-    let l:mix_file = ale#path#FindNearestFile(a:buffer, 'mix.exs')
-
-    if !empty(l:mix_file)
-      return fnamemodify(l:mix_file, ':p:h')
-    endif
-
-    return '.'
-endfunction
-
 function! ale_linters#elixir#mix#GetCommand(buffer) abort
-    let l:project_root = ale_linters#elixir#mix#FindProjectRoot(a:buffer)
+    let l:temp_dir = ale#command#CreateDirectory(a:buffer)
 
-    let l:temp_dir = ale#engine#CreateDirectory(a:buffer)
-
-    let l:mix_build_path = has('win32')
-    \   ? 'set MIX_BUILD_PATH=' . ale#Escape(l:temp_dir) . ' &&'
-    \   : 'MIX_BUILD_PATH=' . ale#Escape(l:temp_dir)
-
-    return ale#path#CdString(l:project_root)
-          \ . l:mix_build_path
-          \ . ' mix compile %s'
+    return ale#Env('MIX_BUILD_PATH', l:temp_dir) . 'mix compile %s'
 endfunction
 
 call ale#linter#Define('elixir', {
 \   'name': 'mix',
 \   'executable': 'mix',
-\   'command_callback': 'ale_linters#elixir#mix#GetCommand',
+\   'cwd': function('ale#handlers#elixir#FindMixProjectRoot'),
+\   'command': function('ale_linters#elixir#mix#GetCommand'),
 \   'callback': 'ale_linters#elixir#mix#Handle',
 \   'lint_file': 1,
 \})

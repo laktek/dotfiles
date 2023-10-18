@@ -1,5 +1,15 @@
 " Author: w0rp <devw0rp@gmail.com>
 " Description: Error handling for the format GHC outputs.
+"
+function! ale#handlers#haskell#GetStackExecutable(bufnr) abort
+    if ale#path#FindNearestFile(a:bufnr, 'stack.yaml') isnot# ''
+        return 'stack'
+    endif
+
+    " if there is no stack.yaml file, we don't use stack even if it exists,
+    " so we return '', because executable('') apparently always fails
+    return ''
+endfunction
 
 " Remember the directory used for temporary files for Vim.
 let s:temp_dir = fnamemodify(ale#util#Tempname(), ':h')
@@ -8,6 +18,16 @@ let s:temp_regex_prefix =
 \   '\M'
 \   . substitute(s:temp_dir, '\\', '\\\\', 'g')
 \   . '\.\{-}'
+
+function! s:PanicOutput(lines) abort
+    return [{
+    \   'lnum': 1,
+    \   'col': 1,
+    \   'text': 'ghc panic!',
+    \   'type': 'E',
+    \   'detail' : join(a:lines, "\n"),
+    \}]
+endfunction
 
 function! ale#handlers#haskell#HandleGHCFormat(buffer, lines) abort
     " Look for lines like the following.
@@ -23,6 +43,14 @@ function! ale#handlers#haskell#HandleGHCFormat(buffer, lines) abort
     let l:output = []
 
     let l:corrected_lines = []
+
+    " If ghc panic error, put the whole message in details and exit.
+    let l:panic_position = match(a:lines,'ghc: panic!')
+    let l:panic_end = match(a:lines,'Please report this as a GHC bug:')
+
+    if l:panic_position >= 0
+        return s:PanicOutput(a:lines[l:panic_position : l:panic_end])
+    endif
 
     " Group the lines into smaller lists.
     for l:line in a:lines
@@ -56,11 +84,11 @@ function! ale#handlers#haskell#HandleGHCFormat(buffer, lines) abort
         let l:errors = matchlist(l:match[4], '\v([wW]arning|[eE]rror): ?(.*)')
 
         if len(l:errors) > 0
-          let l:ghc_type = l:errors[1]
-          let l:text = l:errors[2]
+            let l:ghc_type = l:errors[1]
+            let l:text = l:errors[2]
         else
-          let l:ghc_type = ''
-          let l:text = l:match[4][:0] is# ' ' ? l:match[4][1:] : l:match[4]
+            let l:ghc_type = ''
+            let l:text = l:match[4][:0] is# ' ' ? l:match[4][1:] : l:match[4]
         endif
 
         if l:ghc_type is? 'Warning'

@@ -29,9 +29,10 @@ endfunction
 
 call ale#linter#Define('puppet', {
 \   'name': 'languageserver',
+\   'aliases': ['puppet_languageserver'],
 \   'lsp': 'stdio',
-\   'executable_callback': ale#VarFunc('puppet_languageserver_executable'),
+\   'executable': {b -> ale#Var(b, 'puppet_languageserver_executable')},
 \   'command': '%e --stdio',
 \   'language': 'puppet',
-\   'project_root_callback': 'ale_linters#puppet#languageserver#GetProjectRoot',
+\   'project_root': function('ale_linters#puppet#languageserver#GetProjectRoot'),
 \})

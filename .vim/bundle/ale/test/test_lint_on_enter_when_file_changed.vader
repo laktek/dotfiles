@@ -35,7 +35,7 @@ After:
 Execute(The file changed event function should set b:ale_file_changed):
   let g:ale_lint_on_enter = 0
 
-  if has('gui')
+  if has('gui_running')
     new
   else
     e test
@@ -50,6 +50,7 @@ Execute(The file changed event function should set b:ale_file_changed):
 Execute(The file changed event function should lint the current buffer when it has changed):
   set filetype=foobar
   call ale#events#FileChangedEvent(bufnr(''))
+  call ale#test#FlushJobs()
 
   AssertEqual [{
   \   'bufnr': bufnr(''),
@@ -61,13 +62,14 @@ Execute(The file changed event function should lint the current buffer when it h
   \   'nr': -1,
   \   'pattern': '',
   \   'valid': 1,
-  \ }], ale#test#GetLoclistWithoutModule()
+  \ }], ale#test#GetLoclistWithoutNewerKeys()
 
 Execute(The buffer should be checked after entering it after the file has changed):
   let b:ale_file_changed = 1
 
   set filetype=foobar
   call ale#events#ReadOrEnterEvent(bufnr(''))
+  call ale#test#FlushJobs()
 
   AssertEqual [{
   \   'bufnr': bufnr(''),
@@ -79,4 +81,4 @@ Execute(The buffer should be checked after entering it after the file has change
   \   'nr': -1,
   \   'pattern': '',
   \   'valid': 1,
-  \ }], ale#test#GetLoclistWithoutModule()
+  \ }], ale#test#GetLoclistWithoutNewerKeys()

@@ -30,7 +30,7 @@ After:
 
   delfunction SetNProblems
 
-  sign unplace *
+  call ale#sign#Clear()
 
 Execute(There should be no limit on signs with negative numbers):
   AssertEqual range(1, 42), SetNProblems(42)
@@ -39,11 +39,6 @@ Execute(0 signs should be set when the max is 0):
   let g:ale_max_signs = 0
 
   AssertEqual [], SetNProblems(42)
-
-Execute(1 signs should be set when the max is 1):
-  let g:ale_max_signs = 1
-
-  AssertEqual [1], SetNProblems(42)
 
 Execute(10 signs should be set when the max is 10):
   let g:ale_max_signs = 10

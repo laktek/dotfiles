@@ -4,6 +4,30 @@
 call ale#Set('handlebars_embertemplatelint_executable', 'ember-template-lint')
 call ale#Set('handlebars_embertemplatelint_use_global', get(g:, 'ale_use_global_executables', 0))
 
+function! ale_linters#handlebars#embertemplatelint#GetExecutable(buffer) abort
+    return ale#path#FindExecutable(a:buffer, 'handlebars_embertemplatelint', [
+    \   'node_modules/.bin/ember-template-lint',
+    \])
+endfunction
+
+function! ale_linters#handlebars#embertemplatelint#GetCommand(buffer, version) abort
+    if ale#semver#GTE(a:version, [4, 0, 0])
+        " --json was removed in favor of --format=json in ember-template-lint@4.0.0
+        return '%e --format=json --filename %s'
+    endif
+
+    return '%e --json --filename %s'
+endfunction
+
+function! ale_linters#handlebars#embertemplatelint#GetCommandWithVersionCheck(buffer) abort
+    return ale#semver#RunWithVersionCheck(
+    \   a:buffer,
+    \   ale_linters#handlebars#embertemplatelint#GetExecutable(a:buffer),
+    \   '%e --version',
+    \   function('ale_linters#handlebars#embertemplatelint#GetCommand'),
+    \)
+endfunction
+
 function! ale_linters#handlebars#embertemplatelint#Handle(buffer, lines) abort
     let l:output = []
     let l:json = ale#util#FuzzyJSONDecode(a:lines, {})
@@ -30,10 +54,9 @@ function! ale_linters#handlebars#embertemplatelint#Handle(buffer, lines) abort
 endfunction
 
 call ale#linter#Define('handlebars', {
-\   'name': 'ember-template-lint',
-\   'executable_callback': ale#node#FindExecutableFunc('handlebars_embertemplatelint', [
-\       'node_modules/.bin/ember-template-lint',
-\   ]),
-\   'command': '%e --json %t',
+\   'name': 'embertemplatelint',
+\   'aliases': ['ember-template-lint'],
+\   'executable': function('ale_linters#handlebars#embertemplatelint#GetExecutable'),
+\   'command': function('ale_linters#handlebars#embertemplatelint#GetCommandWithVersionCheck'),
 \   'callback': 'ale_linters#handlebars#embertemplatelint#Handle',
 \})

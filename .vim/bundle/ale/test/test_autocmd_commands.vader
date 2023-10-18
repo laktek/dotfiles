@@ -49,8 +49,10 @@ Before:
   Save g:ale_lint_on_save
   Save g:ale_lint_on_text_changed
   Save g:ale_pattern_options_enabled
+  Save g:ale_hover_cursor
+  Save g:ale_close_preview_on_insert
 
-  " Turn everything on by defaul for these tests.
+  " Turn everything on by default for these tests.
   let g:ale_completion_enabled = 1
   let g:ale_echo_cursor = 1
   let g:ale_enabled = 1
@@ -61,6 +63,8 @@ Before:
   let g:ale_lint_on_save = 1
   let g:ale_lint_on_text_changed = 1
   let g:ale_pattern_options_enabled = 1
+  let g:ale_hover_cursor = 1
+  let g:ale_close_preview_on_insert = 0
 
 After:
   delfunction CheckAutocmd
@@ -77,6 +81,7 @@ After:
 Execute (All events should be set up when everything is on):
   let g:ale_echo_cursor = 1
 
+  " The InsertEnter event is only added when a mapping is not set.
   AssertEqual
   \ [
   \   'BufEnter * call ale#events#ReadOrEnterEvent(str2nr(expand(''<abuf>'')))',
@@ -84,20 +89,25 @@ Execute (All events should be set up when everything is on):
   \   'BufWinEnter * call ale#events#LintOnEnter(str2nr(expand(''<abuf>'')))',
   \   'BufWritePost * call ale#events#SaveEvent(str2nr(expand(''<abuf>'')))',
   \   'CursorHold * if exists(''*ale#engine#Cleanup'') | call ale#cursor#EchoCursorWarningWithDelay() | endif',
+  \   'CursorHold if exists(''*ale#lsp#Send'') | call ale#hover#ShowTruncatedMessageAtCursor() | endif',
   \   'CursorMoved * if exists(''*ale#engine#Cleanup'') | call ale#cursor#EchoCursorWarningWithDelay() | endif',
   \   'FileChangedShellPost * call ale#events#FileChangedEvent(str2nr(expand(''<abuf>'')))',
   \   'FileType * call ale#events#FileTypeEvent( str2nr(expand(''<abuf>'')), expand(''<amatch>''))',
-  \   'InsertLeave * call ale#Queue(0)',
-  \   'InsertLeave if exists(''*ale#engine#Cleanup'') | call ale#cursor#EchoCursorWarning() | endif',
-  \   'TextChanged * call ale#Queue(g:ale_lint_delay)',
-  \   'TextChangedI * call ale#Queue(g:ale_lint_delay)',
+  \ ] + (
+  \   maparg("\<C-c>", 'i') isnot# '<Esc>'
+  \     ? ['InsertEnter * call ale#events#InsertEnterEvent(str2nr(expand(''<abuf>'')))']
+  \     : []
+  \ ) + [
+  \   'InsertLeave * call ale#events#InsertLeaveEvent(str2nr(expand(''<abuf>'')))',
+  \   'TextChanged * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
+  \   'TextChangedI * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
   \ ],
   \ CheckAutocmd('ALEEvents')
 
 Execute (Only the required events should be bound even if various settings are off):
+  let g:ale_enabled = 1
   let g:ale_completion_enabled = 0
   let g:ale_echo_cursor = 0
-  let g:ale_enabled = 0
   let g:ale_fix_on_save = 0
   let g:ale_lint_on_enter = 0
   let g:ale_lint_on_filetype_changed = 0
@@ -105,12 +115,35 @@ Execute (Only the required events should be bound even if various settings are o
   let g:ale_lint_on_save = 0
   let g:ale_lint_on_text_changed = 0
   let g:ale_pattern_options_enabled = 0
+  let g:ale_hover_cursor = 0
 
   AssertEqual
   \ [
   \   'BufEnter * call ale#events#ReadOrEnterEvent(str2nr(expand(''<abuf>'')))',
   \   'BufReadPost * call ale#events#ReadOrEnterEvent(str2nr(expand(''<abuf>'')))',
   \   'BufWritePost * call ale#events#SaveEvent(str2nr(expand(''<abuf>'')))',
+  \ ],
+  \ CheckAutocmd('ALEEvents')
+
+Execute (The cursor hover event should be enabled with g:ale_hover_cursor = 1):
+  let g:ale_enabled = 1
+  let g:ale_completion_enabled = 0
+  let g:ale_echo_cursor = 0
+  let g:ale_fix_on_save = 0
+  let g:ale_lint_on_enter = 0
+  let g:ale_lint_on_filetype_changed = 0
+  let g:ale_lint_on_insert_leave = 0
+  let g:ale_lint_on_save = 0
+  let g:ale_lint_on_text_changed = 0
+  let g:ale_pattern_options_enabled = 0
+  let g:ale_hover_cursor = 1
+
+  AssertEqual
+  \ [
+  \   'BufEnter * call ale#events#ReadOrEnterEvent(str2nr(expand(''<abuf>'')))',
+  \   'BufReadPost * call ale#events#ReadOrEnterEvent(str2nr(expand(''<abuf>'')))',
+  \   'BufWritePost * call ale#events#SaveEvent(str2nr(expand(''<abuf>'')))',
+  \   'CursorHold * if exists(''*ale#lsp#Send'') | call ale#hover#ShowTruncatedMessageAtCursor() | endif',
   \ ],
   \ CheckAutocmd('ALEEvents')
 
@@ -119,8 +152,8 @@ Execute (g:ale_lint_on_text_changed = 1 bind both events):
 
   AssertEqual
   \ [
-  \   'TextChanged * call ale#Queue(g:ale_lint_delay)',
-  \   'TextChangedI * call ale#Queue(g:ale_lint_delay)',
+  \   'TextChanged * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
+  \   'TextChangedI * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
   \ ],
   \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^TextChanged''')
 
@@ -129,8 +162,8 @@ Execute (g:ale_lint_on_text_changed = 'always' should bind both events):
 
   AssertEqual
   \ [
-  \   'TextChanged * call ale#Queue(g:ale_lint_delay)',
-  \   'TextChangedI * call ale#Queue(g:ale_lint_delay)',
+  \   'TextChanged * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
+  \   'TextChangedI * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
   \ ],
   \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^TextChanged''')
 
@@ -139,7 +172,7 @@ Execute (g:ale_lint_on_text_changed = 'normal' should bind only TextChanged):
 
   AssertEqual
   \ [
-  \   'TextChanged * call ale#Queue(g:ale_lint_delay)',
+  \   'TextChanged * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
   \ ],
   \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^TextChanged''')
 
@@ -148,7 +181,7 @@ Execute (g:ale_lint_on_text_changed = 'insert' should bind only TextChangedI):
 
   AssertEqual
   \ [
-  \   'TextChangedI * call ale#Queue(g:ale_lint_delay)',
+  \   'TextChangedI * call ale#Queue(ale#Var(str2nr(expand(''<abuf>'')), ''lint_delay''))',
   \ ],
   \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^TextChanged''')
 
@@ -156,9 +189,19 @@ Execute (g:ale_lint_on_insert_leave = 1 should bind InsertLeave):
   let g:ale_lint_on_insert_leave = 1
   let g:ale_echo_cursor = 0
 
+  " CI at least should run this check.
+  " There isn't an easy way to save an restore a mapping during running the test.
+  if maparg("\<C-c>", 'i') isnot# '<Esc>'
+    AssertEqual
+    \ [
+    \   'InsertEnter * call ale#events#InsertEnterEvent(str2nr(expand(''<abuf>'')))',
+    \ ],
+    \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^InsertEnter''')
+  endif
+
   AssertEqual
   \ [
-  \   'InsertLeave * call ale#Queue(0)',
+  \   'InsertLeave * call ale#events#InsertLeaveEvent(str2nr(expand(''<abuf>'')))',
   \ ],
   \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^InsertLeave''')
 
@@ -188,6 +231,10 @@ Execute (ALECleanupGroup should include the right commands):
     \], CheckAutocmd('ALECleanupGroup')
   endif
 
+Execute(ALECompletionActions should always be set up):
+  AssertEqual [
+  \ 'CompleteDone * call ale#completion#HandleUserData(v:completed_item)',
+  \], CheckAutocmd('ALECompletionActions')
 
 Execute(Enabling completion should set up autocmd events correctly):
   let g:ale_completion_enabled = 0
@@ -206,3 +253,13 @@ Execute(Disabling completion should remove autocmd events correctly):
 
   AssertEqual [], CheckAutocmd('ALECompletionGroup')
   AssertEqual 0, g:ale_completion_enabled
+
+Execute(ALE should try to close the preview window on InsertEnter):
+  let g:ale_lint_on_insert_leave = 0
+  let g:ale_close_preview_on_insert = 1
+
+  AssertEqual
+  \ [
+  \   'InsertEnter * call ale#events#InsertEnterEvent(str2nr(expand(''<abuf>'')))',
+  \ ],
+  \ filter(CheckAutocmd('ALEEvents'), 'v:val =~ ''^InsertEnter''')

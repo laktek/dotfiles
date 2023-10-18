@@ -3,12 +3,16 @@ Before:
   Save g:ale_enabled
   Save g:ale_linters
   Save g:ale_run_synchronously
+  Save g:ale_disable_lsp
 
   call ale#test#SetDirectory('/testplugin/test/completion')
   call ale#test#SetFilename('dummy.txt')
 
   runtime autoload/ale/lsp.vim
+  runtime autoload/ale/lsp_linter.vim
 
+  let g:ale_disable_lsp = 0
+  unlet! b:ale_disable_lsp
   let g:ale_lint_on_save = 1
   let b:ale_enabled = 1
   let g:ale_lsp_next_message_id = 1
@@ -29,21 +33,24 @@ Before:
   \ 'lsp': 'stdio',
   \ 'command': 'cat - > /dev/null',
   \ 'executable': has('win32') ? 'cmd' : 'echo',
-  \ 'language_callback': 'LanguageCallback',
-  \ 'project_root_callback': 'ProjectRootCallback',
+  \ 'language': function('LanguageCallback'),
+  \ 'project_root': function('ProjectRootCallback'),
   \ })
   let g:ale_linters = {'foobar': ['dummy_linter']}
 
-  function! ale#lsp_linter#StartLSP(buffer, linter) abort
+  function! ale#lsp_linter#StartLSP(buffer, linter, Callback) abort
     let g:conn_id = ale#lsp#Register('executable', '/foo/bar', {})
     call ale#lsp#MarkDocumentAsOpen(g:conn_id, a:buffer)
-
-    return {
+    let l:details = {
+    \ 'command': 'foobar',
     \ 'buffer': a:buffer,
     \ 'connection_id': g:conn_id,
     \ 'project_root': '/foo/bar',
-    \ 'language_id': 'foobar',
     \}
+
+    call a:Callback(a:linter, l:details)
+
+    return 1
   endfunction
 
   " Replace the Send function for LSP, so we can monitor calls to it.
@@ -61,6 +68,7 @@ After:
   unlet! b:ale_enabled
   unlet! b:ale_linters
   unlet! g:message_list
+  unlet! b:ale_save_event_fired
 
   delfunction LanguageCallback
   delfunction ProjectRootCallback
@@ -86,14 +94,38 @@ Execute(Server should be notified on save):
   \ [
   \   [1, 'textDocument/didChange', {
   \     'textDocument': {
-  \       'uri': ale#path#ToURI(expand('%:p')),
+  \       'uri': ale#path#ToFileURI(expand('%:p')),
+  \       'version': g:ale_lsp_next_version_id - 1,
+  \     },
+  \     'contentChanges': [{'text': join(getline(1, '$'), "\n") . "\n"}],
+  \   }],
+  \ ],
+  \ g:message_list
+
+Execute(Server should be notified on save with didSave is supported by server):
+
+  " Replace has capability function to simulate didSave server capability
+  function! ale#lsp#HasCapability(conn_id, capability) abort
+      if a:capability == 'did_save'
+          return 1
+      endif
+      return 0
+  endfunction
+
+  call ale#events#SaveEvent(bufnr(''))
+
+  AssertEqual
+  \ [
+  \   [1, 'textDocument/didChange', {
+  \     'textDocument': {
+  \       'uri': ale#path#ToFileURI(expand('%:p')),
   \       'version': g:ale_lsp_next_version_id - 1,
   \     },
   \     'contentChanges': [{'text': join(getline(1, '$'), "\n") . "\n"}],
   \   }],
   \   [1, 'textDocument/didSave', {
   \     'textDocument': {
-  \       'uri': ale#path#ToURI(expand('%:p')),
+  \       'uri': ale#path#ToFileURI(expand('%:p')),
   \     },
   \   }],
   \ ],
@@ -106,7 +138,7 @@ Execute(Server should be notified on change):
   \ [
   \   [1, 'textDocument/didChange', {
   \     'textDocument': {
-  \       'uri': ale#path#ToURI(expand('%:p')),
+  \       'uri': ale#path#ToFileURI(expand('%:p')),
   \       'version': g:ale_lsp_next_version_id - 1,
   \     },
   \     'contentChanges': [{'text': join(getline(1, '$'), "\n") . "\n"}],

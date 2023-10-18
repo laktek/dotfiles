@@ -21,9 +21,10 @@ endfunction
 
 call ale#linter#Define('kotlin', {
 \   'name': 'languageserver',
+\   'aliaes': ['kotlin_language_server'],
 \   'lsp': 'stdio',
-\   'executable_callback': ale#VarFunc('kotlin_languageserver_executable'),
+\   'executable': {b -> ale#Var(b, 'kotlin_languageserver_executable')},
 \   'command': '%e',
 \   'language': 'kotlin',
-\   'project_root_callback': 'ale_linters#kotlin#languageserver#GetProjectRoot',
+\   'project_root': function('ale_linters#kotlin#languageserver#GetProjectRoot'),
 \})

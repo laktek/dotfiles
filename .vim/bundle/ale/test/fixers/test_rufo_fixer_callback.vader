@@ -5,9 +5,6 @@ Before:
   let g:ale_ruby_rufo_executable = 'xxxinvalid'
 
   call ale#test#SetDirectory('/testplugin/test/fixers')
-  silent cd ..
-  silent cd command_callback
-  let g:dir = getcwd()
 
 After:
   Restore
@@ -16,14 +13,14 @@ After:
 
 Execute(The rufo command should contain `bundle exec` when executable is `bundle`):
   let g:ale_ruby_rufo_executable = 'bundle'
-  call ale#test#SetFilename('ruby_paths/dummy.rb')
+  call ale#test#SetFilename('../test-files/ruby/dummy.rb')
 
   AssertEqual
   \ ale#Escape('bundle') . ' exec rufo %t',
   \ ale#fixers#rufo#GetCommand(bufnr(''))
 
 Execute(The rufo callback should return the correct default values):
-  call ale#test#SetFilename('ruby_paths/dummy.rb')
+  call ale#test#SetFilename('../test-files/ruby/dummy.rb')
 
   AssertEqual
   \ {

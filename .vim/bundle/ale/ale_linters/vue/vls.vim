@@ -12,11 +12,12 @@ endfunction
 
 call ale#linter#Define('vue', {
 \   'name': 'vls',
+\   'aliases': ['vuels'],
 \   'lsp': 'stdio',
-\   'executable_callback': ale#node#FindExecutableFunc('vue_vls', [
+\   'executable': {b -> ale#path#FindExecutable(b, 'vue_vls', [
 \       'node_modules/.bin/vls',
-\   ]),
+\   ])},
 \   'command': '%e --stdio',
 \   'language': 'vue',
-\   'project_root_callback': 'ale_linters#vue#vls#GetProjectRoot',
+\   'project_root': function('ale_linters#vue#vls#GetProjectRoot'),
 \})
