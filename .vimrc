@@ -139,8 +139,9 @@ endif
 
 " Color scheme
 syntax enable
+set termguicolors
 set background=dark
-colorscheme solarized
+colorscheme solarized8
 
 " set font
 set gfn=Inconsolata:h13
